@@ -1,0 +1,56 @@
+name: Scharmuetzelsee Anmeldung Watch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */5 * * *'
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Poll registration page every 15s
+        run: |
+          END=$((SECONDS+20700))
+          M5=0
+          M10=0
+          M15=0
+          M20=0
+          LAST_HOUR=0
+
+          while [ $SECONDS -lt $END ]; do
+            CONTENT=$(curl -s "https://www.berlin-timing.de/Scharmuetzelsee-Triathlon/Anmeldung")
+            
+            if ! echo "$CONTENT" | grep -q "Die Anmeldung ist geschlossen"; then
+              echo "Anmeldung offen Sende Telegram Nachricht"
+              curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+                -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+                -d text="🚨 Scharmützelsee Anmeldung ist JETZT offen Hier anmelden https://www.berlin-timing.de/Scharmuetzelsee-Triathlon/Anmeldung"
+              exit 0
+            fi
+
+            if [ $SECONDS -ge 300 ] && [ $M5 -eq 0 ]; then
+              curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d text="Bot ist aktiv nach 5 Minuten"
+              M5=1
+            elif [ $SECONDS -ge 600 ] && [ $M10 -eq 0 ]; then
+              curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d text="Bot ist aktiv nach 10 Minuten"
+              M10=1
+            elif [ $SECONDS -ge 900 ] && [ $M15 -eq 0 ]; then
+              curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d text="Bot ist aktiv nach 15 Minuten"
+              M15=1
+            elif [ $SECONDS -ge 1200 ] && [ $M20 -eq 0 ]; then
+              curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d text="Bot ist aktiv nach 20 Minuten"
+              M20=1
+            fi
+
+            if [ $SECONDS -ge 3600 ]; then
+              CURRENT_HOUR=$((SECONDS / 3600))
+              if [ $CURRENT_HOUR -gt $LAST_HOUR ]; then
+                curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" -d text="Bot läuft weiterhin fehlerfrei seit $CURRENT_HOUR Stunde(n)"
+                LAST_HOUR=$CURRENT_HOUR
+              fi
+            fi
+
+            sleep 15
+          done
