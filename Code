@@ -1,0 +1,26 @@
+name: Scharmuetzelsee Anmeldung Watch
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */5 * * *'
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Poll registration page every 15s
+        run: |
+          END=$((SECONDS+20700))
+          while [ $SECONDS -lt $END ]; do
+            CONTENT=$(curl -s "https://www.berlin-timing.de/Scharmuetzelsee-Triathlon/Anmeldung")
+            if ! echo "$CONTENT" | grep -q "Die Anmeldung ist geschlossen"; then
+              echo "Anmeldung offen! Sende Telegram-Nachricht..."
+              curl -s "https://api.telegram.org/bot${{ secrets.TELEGRAM_TOKEN }}/sendMessage" \
+                -d chat_id="${{ secrets.TELEGRAM_CHAT_ID }}" \
+                -d text="🚨 Scharmützelsee Anmeldung ist JETZT offen! Hier anmelden: https://www.berlin-timing.de/Scharmuetzelsee-Triathlon/Anmeldung"
+              exit 0
+            fi
+            sleep 15
+          done
