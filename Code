@@ -12,6 +12,14 @@ jobs:
     steps:
       - name: Poll registration page every 15s
         run: |
+          CURRENT_DATE=$(date -u +"%Y-%m-%d")
+          TARGET_DATE="2026-10-01"
+
+          if [ "$CURRENT_DATE" != "$TARGET_DATE" ]; then
+            echo "Heute ist nicht der 1. Oktober 2026. Beende den Job."
+            exit 0
+          fi
+
           END=$((SECONDS+20700))
           M5=0
           M10=0
@@ -54,3 +62,4 @@ jobs:
 
             sleep 15
           done
+
